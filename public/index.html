@@ -132,10 +132,42 @@
         </div>
       </div>
 
-      <!-- Tab: Pedidos -->
+      <!-- Tab: Pedidos (Kanban) -->
       <div id="admin-orders-tab" class="tab-content hidden">
-        <div class="admin-orders-grid" id="admin-orders-list">
-          <!-- Pedidos dos clientes gerenciáveis -->
+        <div class="kanban-board">
+          
+          <!-- Coluna: Pendente -->
+          <div class="kanban-column">
+            <div class="kanban-column-header col-pendente">
+              <h3>Pendentes <span class="kanban-count" id="count-pendente">0</span></h3>
+            </div>
+            <div class="kanban-cards" id="list-pendente"></div>
+          </div>
+          
+          <!-- Coluna: Em Preparo -->
+          <div class="kanban-column">
+            <div class="kanban-column-header col-preparando">
+              <h3>Em Preparo <span class="kanban-count" id="count-preparando">0</span></h3>
+            </div>
+            <div class="kanban-cards" id="list-preparando"></div>
+          </div>
+          
+          <!-- Coluna: Pronto -->
+          <div class="kanban-column">
+            <div class="kanban-column-header col-pronto">
+              <h3>Prontos <span class="kanban-count" id="count-pronto">0</span></h3>
+            </div>
+            <div class="kanban-cards" id="list-pronto"></div>
+          </div>
+          
+          <!-- Coluna: Finalizado -->
+          <div class="kanban-column">
+            <div class="kanban-column-header col-finalizado">
+              <h3>Finalizados <span class="kanban-count" id="count-finalizado">0</span></h3>
+            </div>
+            <div class="kanban-cards" id="list-finalizado"></div>
+          </div>
+          
         </div>
       </div>
     </section>
