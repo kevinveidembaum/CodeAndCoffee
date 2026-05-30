@@ -109,6 +109,7 @@
       <div class="admin-tabs">
         <button class="tab-btn active" data-tab="admin-products-tab">Produtos</button>
         <button class="tab-btn" data-tab="admin-orders-tab">Gerenciar Pedidos</button>
+        <button class="tab-btn" data-tab="admin-metrics-tab">Métricas</button>
       </div>
 
       <!-- Tab: Produtos -->
@@ -168,6 +169,57 @@
             <div class="kanban-cards" id="list-finalizado"></div>
           </div>
           
+        </div>
+      </div>
+
+      <!-- Tab: Métricas -->
+      <div id="admin-metrics-tab" class="tab-content hidden">
+        <div class="metrics-grid">
+          <!-- Card: Faturamento -->
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="metric-info">
+              <h4>Faturamento Confirmado</h4>
+              <p id="metric-revenue">R$ 0,00</p>
+              <small>Pedidos entregues</small>
+            </div>
+          </div>
+          <!-- Card: Total Pedidos -->
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-cart-shopping"></i></div>
+            <div class="metric-info">
+              <h4>Total de Pedidos</h4>
+              <p id="metric-orders-count">0</p>
+              <small>Pedidos realizados</small>
+            </div>
+          </div>
+          <!-- Card: Ticket Médio -->
+          <div class="metric-card">
+            <div class="metric-icon"><i class="fa-solid fa-calculator"></i></div>
+            <div class="metric-info">
+              <h4>Ticket Médio</h4>
+              <p id="metric-ticket-average">R$ 0,00</p>
+              <small>Faturamento / Entregues</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics-charts-container">
+          <!-- Gráfico de Vendas por Categoria -->
+          <div class="chart-card">
+            <h3>Produtos Vendidos por Categoria</h3>
+            <div class="chart-bars" id="category-sales-chart">
+              <!-- Barras geradas por JS -->
+            </div>
+          </div>
+          
+          <!-- Resumo de Status -->
+          <div class="chart-card">
+            <h3>Pedidos por Status</h3>
+            <div class="status-summary-list" id="status-summary-list">
+              <!-- Lista de status gerada por JS -->
+            </div>
+          </div>
         </div>
       </div>
     </section>
