@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Produto = require('./models/Produto');
+const Usuario = require('./models/Usuario');
 
 const produtosIniciais = [
   // --- CAFÉS ---
@@ -178,13 +179,22 @@ const semearBanco = async () => {
   try {
     console.log('Iniciando conexão com MongoDB...');
     await mongoose.connect(mongoUri);
-    console.log('Conexão ativa! Limpando coleção de produtos antiga...');
     
+    console.log('Limpando banco de dados (produtos e usuários)...');
     await Produto.deleteMany({});
-    console.log('Coleção limpa! Inserindo novos produtos temáticos...');
+    await Usuario.deleteMany({});
     
+    console.log('Criando produtos e administrador padrão...');
     const produtosCriados = await Produto.insertMany(produtosIniciais);
-    console.log(`Sucesso! ${produtosCriados.length} produtos foram cadastrados com sucesso no banco.`);
+    console.log(`Sucesso! ${produtosCriados.length} produtos cadastrados no banco.`);
+    
+    const adminCriado = await Usuario.create({
+      nome: 'Administrador',
+      email: 'admin@codecoffee.com',
+      senha: 'admin123',
+      role: 'admin'
+    });
+    console.log(`Sucesso! Usuário admin criado: ${adminCriado.email} (senha: admin123)`);
     
     mongoose.connection.close();
     console.log('Conexão encerrada com o MongoDB.');
