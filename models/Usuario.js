@@ -34,17 +34,12 @@ const UsuarioSchema = new mongoose.Schema(
 );
 
 // Criptografar a senha antes de salvar no banco
-UsuarioSchema.pre('save', async function (next) {
+UsuarioSchema.pre('save', async function () {
   if (!this.isModified('senha')) {
-    return next();
+    return;
   }
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.senha = await bcrypt.hash(this.senha, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  const salt = await bcrypt.genSalt(10);
+  this.senha = await bcrypt.hash(this.senha, salt);
 });
 
 // Método para verificar se a senha está correta
