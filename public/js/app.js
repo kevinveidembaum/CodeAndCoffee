@@ -637,75 +637,121 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Admin - Aba Pedidos Clientes
+  // Admin - Aba Pedidos Clientes (Kanban)
   async function carregarPedidosGerenciamentoAdmin() {
     try {
       const response = await API.listarTodosPedidosAdmin();
       const pedidos = response.data;
 
-      if (pedidos.length === 0) {
-        adminOrdersList.innerHTML = `
-          <div class="empty-state">
-            <i class="fa-solid fa-box-open"></i>
-            <p>Nenhum pedido efetuado no sistema.</p>
-          </div>
-        `;
-        return;
-      }
+      // Selecionar os contêineres e contadores das colunas
+      const lists = {
+        pendente: document.getElementById('list-pendente'),
+        preparando: document.getElementById('list-preparando'),
+        pronto: document.getElementById('list-pronto'),
+        finalizado: document.getElementById('list-finalizado')
+      };
 
-      adminOrdersList.innerHTML = pedidos.map(ped => {
-        const dataFormatada = new Date(ped.createdAt).toLocaleString('pt-BR');
-        const clienteNome = ped.cliente ? ped.cliente.nome : 'Cliente Desconhecido';
-        
-        const itensHtml = ped.itens.map(it => `
-          <div class="order-item-desc">
-            <span>${it.quantidade}x ${it.produto ? it.produto.nome : 'Removido'}</span>
-          </div>
-        `).join('');
+      const counts = {
+        pendente: document.getElementById('count-pendente'),
+        preparando: document.getElementById('count-preparando'),
+        pronto: document.getElementById('count-pronto'),
+        finalizado: document.getElementById('count-finalizado')
+      };
 
-        return `
-          <div class="order-card" style="border-top: 4px solid var(--primary);">
-            <div class="order-header">
-              <div>
-                <span class="order-id">#ID-${ped._id.slice(-6).toUpperCase()}</span>
-                <div class="order-date">${dataFormatada}</div>
-                <div style="font-size:0.85rem; font-weight:600; margin-top:4px;"><i class="fa-solid fa-user"></i> ${clienteNome}</div>
+      // Limpar todos os contêineres primeiro
+      Object.keys(lists).forEach(status => {
+        if (lists[status]) lists[status].innerHTML = '';
+      });
+
+      // Separar os pedidos por status
+      const grupos = {
+        pendente: pedidos.filter(p => p.status === 'pendente'),
+        preparando: pedidos.filter(p => p.status === 'preparando'),
+        pronto: pedidos.filter(p => p.status === 'pronto'),
+        finalizado: pedidos.filter(p => p.status === 'entregue' || p.status === 'cancelado')
+      };
+
+      // Atualizar contadores
+      Object.keys(counts).forEach(status => {
+        if (counts[status]) counts[status].textContent = grupos[status].length;
+      });
+
+      // Renderizar cada coluna
+      Object.keys(lists).forEach(status => {
+        const container = lists[status];
+        if (!container) return;
+
+        const pedidosDoGrupo = grupos[status];
+
+        if (pedidosDoGrupo.length === 0) {
+          container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:20px;">Nenhum pedido</div>`;
+          return;
+        }
+
+        container.innerHTML = pedidosDoGrupo.map(ped => {
+          const dataFormatada = new Date(ped.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const clienteNome = ped.cliente ? ped.cliente.nome : 'Cliente Visitante';
+
+          const itensHtml = ped.itens.map(it => `
+            <div class="kanban-card-item">
+              <span>${it.quantidade}x ${it.produto ? it.produto.nome : 'Produto Removido'}</span>
+            </div>
+          `).join('');
+
+          // Gerar botões de ação dinâmicos baseados no status atual
+          let botoesAcao = '';
+          if (ped.status === 'pendente') {
+            botoesAcao = `
+              <button class="btn btn-primary action-kanban-btn" data-id="${ped._id}" data-status="preparando">Iniciar Preparo</button>
+              <button class="btn btn-danger action-kanban-btn" data-id="${ped._id}" data-status="cancelado" title="Cancelar Pedido"><i class="fa-solid fa-ban"></i></button>
+            `;
+          } else if (ped.status === 'preparando') {
+            botoesAcao = `
+              <button class="btn btn-success action-kanban-btn" data-id="${ped._id}" data-status="pronto">Pronto</button>
+            `;
+          } else if (ped.status === 'pronto') {
+            botoesAcao = `
+              <button class="btn btn-primary action-kanban-btn" data-id="${ped._id}" data-status="entregue">Entregar</button>
+            `;
+          } else {
+            // Finalizado (entregue / cancelado)
+            const isCancelado = ped.status === 'cancelado';
+            botoesAcao = `<span class="badge ${isCancelado ? 'badge-danger' : 'badge-success'}" style="text-align:center; width:100%; display:block;">${isCancelado ? 'Cancelado' : 'Entregue'}</span>`;
+          }
+
+          return `
+            <div class="kanban-card">
+              <div class="kanban-card-header">
+                <span class="kanban-card-id">#${ped._id.slice(-6).toUpperCase()}</span>
+                <span class="kanban-card-time"><i class="fa-regular fa-clock"></i> ${dataFormatada}</span>
+              </div>
+              <div class="kanban-card-client"><i class="fa-solid fa-user"></i> ${clienteNome}</div>
+              <div class="kanban-card-items">
+                ${itensHtml}
+              </div>
+              ${ped.observacoes ? `<div class="kanban-card-notes"><strong>Obs:</strong> ${ped.observacoes}</div>` : ''}
+              <div class="kanban-card-total">
+                <span>Total</span>
+                <span>R$ ${ped.total.toFixed(2).replace('.', ',')}</span>
+              </div>
+              <div class="kanban-card-actions">
+                ${botoesAcao}
               </div>
             </div>
-            <div class="order-items-list" style="max-height: 100px; overflow-y:auto;">
-              ${itensHtml}
-            </div>
-            ${ped.observacoes ? `<p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"><strong>Obs:</strong> ${ped.observacoes}</p>` : ''}
-            <div class="order-total-section">
-              <span>Total:</span>
-              <span>R$ ${ped.total.toFixed(2).replace('.', ',')}</span>
-            </div>
-            
-            <div class="admin-order-actions">
-              <select class="status-select" data-id="${ped._id}">
-                <option value="pendente" ${ped.status === 'pendente' ? 'selected' : ''}>Pendente</option>
-                <option value="preparando" ${ped.status === 'preparando' ? 'selected' : ''}>Preparando</option>
-                <option value="pronto" ${ped.status === 'pronto' ? 'selected' : ''}>Pronto</option>
-                <option value="entregue" ${ped.status === 'entregue' ? 'selected' : ''}>Entregue</option>
-                <option value="cancelado" ${ped.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
-              </select>
-              <button class="btn btn-primary update-status-btn" data-id="${ped._id}" style="padding:6px 12px; font-size:0.85rem;">Alterar</button>
-            </div>
-          </div>
-        `;
-      }).join('');
+          `;
+        }).join('');
+      });
 
-      // Ouvintes de alteração de status
-      document.querySelectorAll('.update-status-btn').forEach(btn => {
+      // Adicionar escuta de eventos aos botões de ação do Kanban
+      document.querySelectorAll('.action-kanban-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const pedId = btn.dataset.id;
-          const select = document.querySelector(`.status-select[data-id="${pedId}"]`);
-          const novoStatus = select.value;
+          const novoStatus = btn.dataset.status;
 
           mostrarLoader(true);
           try {
             await API.atualizarStatusPedidoAdmin(pedId, novoStatus);
-            mostrarToast('Status do pedido atualizado!', 'success');
+            mostrarToast('Pedido atualizado com sucesso!', 'success');
             carregarPedidosGerenciamentoAdmin();
           } catch (error) {
             mostrarToast(error.message, 'error');
@@ -716,11 +762,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
     } catch (error) {
+      console.error('Erro ao renderizar Kanban de pedidos:', error);
       mostrarToast('Erro ao carregar gerenciamento de pedidos', 'error');
     }
   }
-
-  // Admin - Cadastro/Edição de Produto
   adminAddProductBtn.addEventListener('click', () => abrirFormularioProduto());
 
   async function abrirFormularioProduto(produtoId = null) {
