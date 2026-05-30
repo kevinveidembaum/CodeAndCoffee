@@ -432,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkoutBtn.disabled = false;
     cartItemsContainer.innerHTML = carrinho.map(item => `
       <div class="cart-item">
-        <img class="cart-item-img" src="${item.imagemUrl}" alt="${item.nome}">
+        <img class="cart-item-img" src="${item.imagemUrl}" alt="${item.nome}" onerror="this.src='https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'">
         <div class="cart-item-details">
           <div class="cart-item-name">${item.nome}</div>
           <div class="cart-item-price">R$ ${item.preco.toFixed(2).replace('.', ',')}</div>
