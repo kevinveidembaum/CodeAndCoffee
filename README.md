@@ -71,6 +71,7 @@ Certifique-se de ter instalado em sua máquina:
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/registrar` | Registra uma nova conta no sistema | Não |
 | `POST` | `/api/auth/login` | Realiza login e retorna token JWT | Não |
+| `POST` | `/api/auth/registrar-admin` | Cadastra um novo administrador no sistema | Sim (Apenas Admin) |
 | `GET` | `/api/produtos` | Lista todos os produtos (filtros por query) | Não |
 | `GET` | `/api/produtos/:id` | Retorna os detalhes de um produto | Não |
 | `POST` | `/api/produtos` | Cadastra um novo produto | Sim (Apenas Admin) |
