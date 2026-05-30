@@ -6,7 +6,7 @@ const Produto = require('../models/Produto');
 // @access  Privado (Cliente/Admin)
 const criarPedido = async (req, res, next) => {
   try {
-    const { itens, observacoes } = req.body;
+    const { itens, observacoes, tipoEntrega, endereco, metodoPagamento } = req.body;
 
     if (!itens || !Array.isArray(itens) || itens.length === 0) {
       return res.status(400).json({
@@ -54,12 +54,20 @@ const criarPedido = async (req, res, next) => {
       });
     }
 
+    // Se for entrega, adicionar taxa fixa de R$ 5,00
+    if (tipoEntrega === 'entrega') {
+      total += 5.00;
+    }
+
     // Criar o pedido associado ao usuário autenticado (req.usuario._id)
     const novoPedido = await Pedido.create({
       cliente: req.usuario._id,
       itens: itensProcessados,
       total,
-      observacoes: observacoes || ''
+      observacoes: observacoes || '',
+      tipoEntrega: tipoEntrega || 'retirada',
+      endereco: tipoEntrega === 'entrega' ? (endereco || '') : '',
+      metodoPagamento: metodoPagamento || 'pix'
     });
 
     // Popular os dados dos produtos para a resposta
