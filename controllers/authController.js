@@ -96,7 +96,47 @@ const login = async (req, res, next) => {
   }
 };
 
+// @desc    Registrar um novo administrador (Apenas por outro Admin)
+// @route   POST /api/auth/registrar-admin
+// @access  Privado (Admin)
+const registrarAdmin = async (req, res, next) => {
+  try {
+    const { nome, email, senha } = req.body;
+
+    // Verificar se o e-mail já existe
+    const usuarioExiste = await Usuario.findOne({ email });
+    if (usuarioExiste) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Este e-mail já está cadastrado'
+      });
+    }
+
+    // Criar o usuário admin
+    const usuario = await Usuario.create({
+      nome,
+      email,
+      senha,
+      role: 'admin'
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Novo administrador cadastrado com sucesso',
+      data: {
+        _id: usuario._id,
+        nome: usuario.nome,
+        email: usuario.email,
+        role: usuario.role
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registrar,
-  login
+  login,
+  registrarAdmin
 };
