@@ -484,29 +484,148 @@ document.addEventListener('DOMContentLoaded', () => {
     cartTotalValue.textContent = `R$ ${valorTotal.toFixed(2).replace('.', ',')}`;
   }
 
-  // Checkout (Enviar Pedido)
-  checkoutBtn.addEventListener('click', async () => {
+  // Checkout (Abre o fluxo de finalização passo a passo)
+  checkoutBtn.addEventListener('click', abrirCheckout);
+
+  // --- FLUXO DE CHECKOUT PASSO A PASSO ---
+  const checkoutModal = document.getElementById('checkout-modal');
+  const closeCheckoutModalBtn = document.getElementById('close-checkout-modal-btn');
+  const checkoutOverlay = document.getElementById('checkout-overlay');
+  
+  const steps = {
+    delivery: document.getElementById('step-delivery'),
+    payment: document.getElementById('step-payment'),
+    confirm: document.getElementById('step-confirm')
+  };
+  
+  const addressInputGroup = document.getElementById('address-input-group');
+  const checkoutAddressInput = document.getElementById('checkout-address');
+  
+  document.querySelectorAll('input[name="delivery-type"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.value === 'entrega') {
+        addressInputGroup.classList.remove('hidden');
+      } else {
+        addressInputGroup.classList.add('hidden');
+      }
+    });
+  });
+
+  function abrirCheckout() {
     if (!API.estaLogado()) {
       fecharCarrinho();
       abrirModalAuth(true);
       mostrarToast('Por favor, faça login antes de fechar o pedido.', 'info');
       return;
     }
+    
+    fecharCarrinho();
+    mostrarPassoCheckout('delivery');
+    checkoutModal.classList.add('active');
+  }
 
+  function fecharCheckout() {
+    checkoutModal.classList.remove('active');
+  }
+
+  function mostrarPassoCheckout(passo) {
+    Object.keys(steps).forEach(key => {
+      if (key === passo) {
+        steps[key].classList.remove('hidden');
+      } else {
+        steps[key].classList.add('hidden');
+      }
+    });
+  }
+
+  closeCheckoutModalBtn.addEventListener('click', fecharCheckout);
+  checkoutOverlay.addEventListener('click', fecharCheckout);
+
+  document.getElementById('btn-delivery-next').addEventListener('click', () => {
+    const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+    if (deliveryType === 'entrega' && !checkoutAddressInput.value.trim()) {
+      mostrarToast('Por favor, insira o endereço de entrega.', 'error');
+      return;
+    }
+    mostrarPassoCheckout('payment');
+  });
+
+  document.getElementById('btn-payment-back').addEventListener('click', () => {
+    mostrarPassoCheckout('delivery');
+  });
+
+  document.getElementById('btn-payment-next').addEventListener('click', () => {
+    renderizarConfirmacaoCheckout();
+    mostrarPassoCheckout('confirm');
+  });
+
+  document.getElementById('btn-confirm-back').addEventListener('click', () => {
+    mostrarPassoCheckout('payment');
+  });
+
+  function renderizarConfirmacaoCheckout() {
+    const confirmItemsList = document.getElementById('confirm-items-list');
+    const confirmDeliveryType = document.getElementById('confirm-delivery-type');
+    const confirmDeliveryAddress = document.getElementById('confirm-delivery-address');
+    const confirmAddressWrapper = document.getElementById('confirm-address-wrapper');
+    const confirmPaymentMethod = document.getElementById('confirm-payment-method');
+    const confirmTotalVal = document.getElementById('confirm-total-val');
+
+    confirmItemsList.innerHTML = carrinho.map(item => `
+      <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.85rem;">
+        <span>${item.quantidade}x ${item.nome}</span>
+        <span>R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}</span>
+      </div>
+    `).join('');
+
+    const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+    const itemsTotal = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+    
+    if (deliveryType === 'entrega') {
+      confirmDeliveryType.textContent = 'Entrega em Domicílio (Taxa: R$ 5,00)';
+      confirmDeliveryAddress.textContent = checkoutAddressInput.value;
+      confirmAddressWrapper.classList.remove('hidden');
+      confirmTotalVal.textContent = `R$ ${(itemsTotal + 5.00).toFixed(2).replace('.', ',')}`;
+    } else {
+      confirmDeliveryType.textContent = 'Retirada na Cafeteria (Sem taxa)';
+      confirmDeliveryAddress.textContent = '-';
+      confirmAddressWrapper.classList.add('hidden');
+      confirmTotalVal.textContent = `R$ ${itemsTotal.toFixed(2).replace('.', ',')}`;
+    }
+
+    const paymentType = document.querySelector('input[name="payment-type"]:checked').value;
+    const paymentNames = {
+      pix: 'Pix',
+      cartao: 'Cartão na Maquininha',
+      dinheiro: 'Dinheiro'
+    };
+    confirmPaymentMethod.textContent = paymentNames[paymentType];
+  }
+
+  document.getElementById('btn-submit-order').addEventListener('click', async () => {
     mostrarLoader(true);
+
     const itensFormatoApi = carrinho.map(item => ({
       produto: item.produtoId,
       quantidade: item.quantidade
     }));
 
+    const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+    const address = deliveryType === 'entrega' ? checkoutAddressInput.value : '';
+    const paymentType = document.querySelector('input[name="payment-type"]:checked').value;
+
     try {
-      const resp = await API.criarPedido(itensFormatoApi, orderNotes.value);
+      await API.criarPedido(itensFormatoApi, orderNotes.value, deliveryType, address, paymentType);
+      
       carrinho = [];
       salvarCarrinho();
       renderizarCarrinho();
+      
       orderNotes.value = '';
-      fecharCarrinho();
-      mostrarToast('Pedido compilado com sucesso!', 'success');
+      checkoutAddressInput.value = '';
+      
+      fecharCheckout();
+      mostrarToast('Pedido realizado com sucesso!', 'success');
       alternarTela('pedidos');
     } catch (error) {
       mostrarToast(error.message, 'error');
@@ -579,6 +698,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `).join('');
 
+      const entregaInfo = ped.tipoEntrega === 'entrega' 
+        ? `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;"><i class="fa-solid fa-motorcycle"></i> Entrega: ${ped.endereco}</div>`
+        : `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;"><i class="fa-solid fa-store"></i> Retirada na Cafeteria</div>`;
+
+      const pagamentoInfo = `<div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"><i class="fa-solid fa-wallet"></i> Pagamento: ${ped.metodoPagamento.toUpperCase()}</div>`;
+
       return `
         <div class="order-card">
           <div class="order-header">
@@ -591,6 +716,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="order-items-list">
             ${itensHtml}
           </div>
+          ${entregaInfo}
+          ${pagamentoInfo}
           ${ped.observacoes ? `<p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"><strong>Obs:</strong> ${ped.observacoes}</p>` : ''}
           <div class="order-total-section">
             <span>Total pago</span>
@@ -729,6 +856,12 @@ document.addEventListener('DOMContentLoaded', () => {
             botoesAcao = `<span class="badge ${isCancelado ? 'badge-danger' : 'badge-success'}" style="text-align:center; width:100%; display:block;">${isCancelado ? 'Cancelado' : 'Entregue'}</span>`;
           }
 
+          const entregaInfo = ped.tipoEntrega === 'entrega' 
+            ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;"><i class="fa-solid fa-motorcycle"></i> Entrega: ${ped.endereco}</div>`
+            : `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;"><i class="fa-solid fa-store"></i> Retirada na loja</div>`;
+
+          const pagamentoInfo = `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;"><i class="fa-solid fa-wallet"></i> Pagamento: ${ped.metodoPagamento.toUpperCase()}</div>`;
+
           return `
             <div class="kanban-card">
               <div class="kanban-card-header">
@@ -739,6 +872,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="kanban-card-items">
                 ${itensHtml}
               </div>
+              ${entregaInfo}
+              ${pagamentoInfo}
               ${ped.observacoes ? `<div class="kanban-card-notes"><strong>Obs:</strong> ${ped.observacoes}</div>` : ''}
               <div class="kanban-card-total">
                 <span>Total</span>
