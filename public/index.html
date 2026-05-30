@@ -100,9 +100,14 @@
     <section id="admin-section" class="app-section hidden">
       <div class="section-header">
         <h2>Painel de Administração</h2>
-        <button id="admin-add-product-btn" class="btn btn-success">
-          <i class="fa-solid fa-plus"></i> Novo Produto
-        </button>
+        <div style="display: flex; gap: 10px;">
+          <button id="admin-create-admin-btn" class="btn btn-secondary">
+            <i class="fa-solid fa-user-shield"></i> Novo Admin
+          </button>
+          <button id="admin-add-product-btn" class="btn btn-success">
+            <i class="fa-solid fa-plus"></i> Novo Produto
+          </button>
+        </div>
       </div>
 
       <!-- Abas da Administração -->
@@ -289,10 +294,6 @@
           <label for="register-senha">Senha</label>
           <input type="password" id="register-senha" required placeholder="Mínimo 6 caracteres">
         </div>
-        <div class="form-group checkbox-group">
-          <input type="checkbox" id="register-admin">
-          <label for="register-admin">Registrar como Administrador</label>
-        </div>
         <button type="submit" class="btn btn-primary btn-block">Criar Conta</button>
       </form>
     </div>
@@ -338,6 +339,32 @@
           <label for="product-available">Disponível no cardápio</label>
         </div>
         <button type="submit" class="btn btn-success btn-block">Salvar Produto</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Criar Novo Admin (Apenas para Administradores) -->
+  <div id="admin-user-modal" class="modal">
+    <div class="modal-overlay" id="admin-user-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cadastrar Novo Administrador</h3>
+        <button class="close-btn" id="close-admin-user-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="admin-user-form" style="margin-top: 20px;">
+        <div class="form-group">
+          <label for="admin-user-name">Nome Completo</label>
+          <input type="text" id="admin-user-name" required placeholder="Nome do Administrador">
+        </div>
+        <div class="form-group">
+          <label for="admin-user-email">E-mail</label>
+          <input type="email" id="admin-user-email" required placeholder="admin.novo@codecoffee.com">
+        </div>
+        <div class="form-group">
+          <label for="admin-user-senha">Senha Provisória</label>
+          <input type="password" id="admin-user-senha" required placeholder="Mínimo 6 caracteres">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Cadastrar Administrador</button>
       </form>
     </div>
   </div>

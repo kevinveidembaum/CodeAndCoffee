@@ -156,5 +156,12 @@ const API = {
       method: 'PATCH',
       body: JSON.stringify({ status })
     });
+  },
+
+  async registrarAdmin(nome, email, senha) {
+    return this.request('/auth/registrar-admin', {
+      method: 'POST',
+      body: JSON.stringify({ nome, email, senha })
+    });
   }
 };
