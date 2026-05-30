@@ -29,7 +29,7 @@ const registrar = async (req, res, next) => {
       nome,
       email,
       senha,
-      role: role || 'cliente' // Permite registrar admin para testes do projeto integrador
+      role: 'cliente'
     });
 
     if (usuario) {
