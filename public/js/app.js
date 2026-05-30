@@ -151,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
       tab.classList.add('active');
       const targetTab = document.getElementById(tab.dataset.tab);
       if (targetTab) targetTab.classList.remove('hidden');
+
+      // Se a aba selecionada for a de métricas, carregar dados
+      if (tab.dataset.tab === 'admin-metrics-tab') {
+        carregarMetricasAdmin();
+      }
     });
   });
 
@@ -766,6 +771,124 @@ document.addEventListener('DOMContentLoaded', () => {
       mostrarToast('Erro ao carregar gerenciamento de pedidos', 'error');
     }
   }
+
+  // Admin - Aba Métricas (Relatórios)
+  async function carregarMetricasAdmin() {
+    mostrarLoader(true);
+    try {
+      const response = await API.listarTodosPedidosAdmin();
+      const pedidos = response.data;
+
+      // 1. Faturamento Total (Apenas pedidos entregues)
+      const pedidosEntregues = pedidos.filter(p => p.status === 'entregue');
+      const faturamentoTotal = pedidosEntregues.reduce((acc, p) => acc + p.total, 0);
+
+      // 2. Total de Pedidos (todos os pedidos)
+      const totalPedidos = pedidos.length;
+
+      // 3. Ticket Médio (Faturamento / Pedidos Entregues)
+      const ticketMedio = faturamentoTotal / (pedidosEntregues.length || 1);
+
+      // Injetar valores nos cards
+      document.getElementById('metric-revenue').textContent = `R$ ${faturamentoTotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById('metric-orders-count').textContent = totalPedidos;
+      document.getElementById('metric-ticket-average').textContent = `R$ ${ticketMedio.toFixed(2).replace('.', ',')}`;
+
+      // 4. Pedidos por Status
+      const contagemStatus = {
+        pendente: pedidos.filter(p => p.status === 'pendente').length,
+        preparando: pedidos.filter(p => p.status === 'preparando').length,
+        pronto: pedidos.filter(p => p.status === 'pronto').length,
+        entregue: pedidos.filter(p => p.status === 'entregue').length,
+        cancelado: pedidos.filter(p => p.status === 'cancelado').length
+      };
+
+      const statusNomes = {
+        pendente: 'Pendentes',
+        preparando: 'Em Preparo',
+        pronto: 'Prontos',
+        entregue: 'Entregues',
+        cancelado: 'Cancelados'
+      };
+
+      const statusSummaryList = document.getElementById('status-summary-list');
+      statusSummaryList.innerHTML = Object.keys(contagemStatus).map(status => `
+        <div class="status-summary-item">
+          <div class="status-summary-label">
+            <span class="status-indicator ${status}"></span>
+            <span>${statusNomes[status]}</span>
+          </div>
+          <span class="status-summary-val">${contagemStatus[status]}</span>
+        </div>
+      `).join('');
+
+      // 5. Vendas por Categoria (Quantidade de itens comprados)
+      const categoriaVendas = {
+        cafe: 0,
+        bebida: 0,
+        acompanhamento: 0,
+        sobremesa: 0
+      };
+
+      // Computar quantidades de produtos vendidos em pedidos não cancelados
+      pedidos.filter(p => p.status !== 'cancelado').forEach(ped => {
+        ped.itens.forEach(it => {
+          if (it.produto && it.produto.categoria) {
+            const cat = it.produto.categoria;
+            if (categoriaVendas[cat] !== undefined) {
+              categoriaVendas[cat] += it.quantidade;
+            }
+          }
+        });
+      });
+
+      const categoriaNomes = {
+        cafe: 'Cafés',
+        bebida: 'Bebidas Geladas',
+        acompanhamento: 'Acompanhamentos',
+        sobremesa: 'Sobremesas'
+      };
+
+      // Achar o valor máximo para escala do gráfico (porcentagem de largura da barra)
+      const maxVendas = Math.max(...Object.values(categoriaVendas), 1);
+
+      const categorySalesChart = document.getElementById('category-sales-chart');
+      categorySalesChart.innerHTML = Object.keys(categoriaVendas).map(cat => {
+        const quantidade = categoriaVendas[cat];
+
+        return `
+          <div class="chart-bar-container">
+            <div class="chart-bar-label">
+              <span>${categoriaNomes[cat]}</span>
+              <strong>${quantidade} unid.</strong>
+            </div>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Animar o preenchimento das barras após um pequeno delay para efeito visual
+      setTimeout(() => {
+        const fills = categorySalesChart.querySelectorAll('.chart-bar-fill');
+        Object.keys(categoriaVendas).forEach((cat, index) => {
+          const quantidade = categoriaVendas[cat];
+          const porcentagem = (quantidade / maxVendas) * 100;
+          if (fills[index]) {
+            fills[index].style.width = `${porcentagem}%`;
+          }
+        });
+      }, 100);
+
+    } catch (error) {
+      console.error('Erro ao processar métricas:', error);
+      mostrarToast('Erro ao carregar relatórios e métricas', 'error');
+    } finally {
+      mostrarLoader(false);
+    }
+  }
+
   adminAddProductBtn.addEventListener('click', () => abrirFormularioProduto());
 
   async function abrirFormularioProduto(produtoId = null) {
