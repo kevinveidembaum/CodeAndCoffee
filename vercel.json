@@ -9,19 +9,19 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "index.js"
+      "dest": "/index.js"
     },
     {
       "src": "/css/(.*)",
-      "dest": "public/css/$1"
+      "dest": "/public/css/$1"
     },
     {
       "src": "/js/(.*)",
-      "dest": "public/js/$1"
+      "dest": "/public/js/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "public/index.html"
+      "dest": "/public/index.html"
     }
   ]
 }
