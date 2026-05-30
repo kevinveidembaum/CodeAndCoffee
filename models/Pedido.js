@@ -50,6 +50,27 @@ const PedidoSchema = new mongoose.Schema(
       type: String,
       default: '',
       trim: true
+    },
+    tipoEntrega: {
+      type: String,
+      enum: {
+        values: ['entrega', 'retirada'],
+        message: '{VALUE} não é um tipo de entrega válido'
+      },
+      default: 'retirada'
+    },
+    endereco: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    metodoPagamento: {
+      type: String,
+      enum: {
+        values: ['dinheiro', 'cartao', 'pix'],
+        message: '{VALUE} não é um método de pagamento válido'
+      },
+      default: 'pix'
     }
   },
   {

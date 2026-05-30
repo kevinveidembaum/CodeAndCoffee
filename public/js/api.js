@@ -136,10 +136,10 @@ const API = {
   },
 
   // --- ENDPOINTS DE PEDIDOS ---
-  async criarPedido(itens, observacoes = '') {
+  async criarPedido(itens, observacoes = '', tipoEntrega = 'retirada', endereco = '', metodoPagamento = 'pix') {
     return this.request('/pedidos', {
       method: 'POST',
-      body: JSON.stringify({ itens, observacoes })
+      body: JSON.stringify({ itens, observacoes, tipoEntrega, endereco, metodoPagamento })
     });
   },
 
