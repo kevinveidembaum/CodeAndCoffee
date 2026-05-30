@@ -31,14 +31,26 @@ Certifique-se de ter instalado em sua máquina:
    npm install
    ```
 
-3. **Configurar as Variáveis de Ambiente**:
+3. **Subir o Banco de Dados (Docker)**:
+   Caso tenha o Docker instalado, inicie uma instância local do MongoDB rodando:
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Configurar as Variáveis de Ambiente**:
    Copie o arquivo `.env.example` para `.env`:
    ```bash
    cp .env.example .env
    ```
-   *Nota: O arquivo `.env` já vem pré-configurado por padrão para conectar no MongoDB local (`mongodb://127.0.0.1:27017/codeAndCoffee`). Se necessário, altere as variáveis de conexão e a chave secreta JWT.*
+   *Nota: O arquivo `.env` já vem pré-configurado por padrão para conectar no MongoDB local do Docker (`mongodb://127.0.0.1:27017/codeAndCoffee`). Se necessário, altere as variáveis de conexão e a chave secreta JWT.*
 
-4. **Rodar a Aplicação**:
+5. **Popular o Banco de Dados (Seed)**:
+   Popule o banco de dados com os produtos iniciais temáticos de programação rodando:
+   ```bash
+   npm run seed
+   ```
+
+6. **Rodar a Aplicação**:
    Para iniciar em modo de desenvolvimento (com recarga automática do Nodemon):
    ```bash
    npm run dev
