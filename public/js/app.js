@@ -704,7 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           mostrarLoader(true);
           try {
-            await API.updateStatusPedidoAdmin(pedId, novoStatus);
+            await API.atualizarStatusPedidoAdmin(pedId, novoStatus);
             mostrarToast('Status do pedido atualizado!', 'success');
             carregarPedidosGerenciamentoAdmin();
           } catch (error) {
