@@ -66,6 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeProductModalBtn = document.getElementById('close-product-modal-btn');
   const productOverlay = document.getElementById('product-overlay');
 
+  // Painel Admin - Modal de Criação de Admin
+  const adminCreateAdminBtn = document.getElementById('admin-create-admin-btn');
+  const adminUserModal = document.getElementById('admin-user-modal');
+  const adminUserForm = document.getElementById('admin-user-form');
+  const closeAdminUserBtn = document.getElementById('close-admin-user-btn');
+  const adminUserOverlay = document.getElementById('admin-user-overlay');
+
   // --- INICIALIZAÇÃO ---
   mostrarLoader(false);
   atualizarInterfaceUsuario();
@@ -151,12 +158,20 @@ document.addEventListener('DOMContentLoaded', () => {
       tab.classList.add('active');
       const targetTab = document.getElementById(tab.dataset.tab);
       if (targetTab) targetTab.classList.remove('hidden');
+
+      // Se a aba selecionada for a de métricas, carregar dados
+      if (tab.dataset.tab === 'admin-metrics-tab') {
+        carregarMetricasAdmin();
+      }
     });
   });
 
-  // --- CONTROLE DE SESSÃO / UI DE USUÁRIO ---
   function atualizarInterfaceUsuario() {
     usuarioLogado = API.obterUsuario();
+    
+    // Sincronizar carrinho específico do usuário logado (ou visitante)
+    carrinho = obterCarrinhoSalvo();
+    renderizarCarrinho();
     
     if (usuarioLogado) {
       // Alterar botão de Entrar para Sair
@@ -247,12 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const nome = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
     const senha = document.getElementById('register-senha').value;
-    const isAdmin = document.getElementById('register-admin').checked;
-    const role = isAdmin ? 'admin' : 'cliente';
 
     mostrarLoader(true);
     try {
-      await API.registrar(nome, email, senha, role);
+      await API.registrar(nome, email, senha);
       fecharModalAuth();
       atualizarInterfaceUsuario();
       mostrarToast('Sua conta foi compilada com sucesso!', 'success');
@@ -348,13 +361,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // --- MECÂNICA DO CARRINHO ---
+  function obterChaveCarrinho() {
+    const usuario = API.obterUsuario();
+    return usuario ? `codecoffee_carrinho_${usuario._id}` : 'codecoffee_carrinho_visitante';
+  }
+
   function obterCarrinhoSalvo() {
-    const localData = localStorage.getItem('codecoffee_carrinho');
+    const chave = obterChaveCarrinho();
+    const localData = localStorage.getItem(chave);
     return localData ? JSON.parse(localData) : [];
   }
 
   function salvarCarrinho() {
-    localStorage.setItem('codecoffee_carrinho', JSON.stringify(carrinho));
+    const chave = obterChaveCarrinho();
+    localStorage.setItem(chave, JSON.stringify(carrinho));
   }
 
   function abrirCarrinho() {
@@ -432,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkoutBtn.disabled = false;
     cartItemsContainer.innerHTML = carrinho.map(item => `
       <div class="cart-item">
-        <img class="cart-item-img" src="${item.imagemUrl}" alt="${item.nome}">
+        <img class="cart-item-img" src="${item.imagemUrl}" alt="${item.nome}" onerror="this.src='https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'">
         <div class="cart-item-details">
           <div class="cart-item-name">${item.nome}</div>
           <div class="cart-item-price">R$ ${item.preco.toFixed(2).replace('.', ',')}</div>
@@ -464,29 +484,148 @@ document.addEventListener('DOMContentLoaded', () => {
     cartTotalValue.textContent = `R$ ${valorTotal.toFixed(2).replace('.', ',')}`;
   }
 
-  // Checkout (Enviar Pedido)
-  checkoutBtn.addEventListener('click', async () => {
+  // Checkout (Abre o fluxo de finalização passo a passo)
+  checkoutBtn.addEventListener('click', abrirCheckout);
+
+  // --- FLUXO DE CHECKOUT PASSO A PASSO ---
+  const checkoutModal = document.getElementById('checkout-modal');
+  const closeCheckoutModalBtn = document.getElementById('close-checkout-modal-btn');
+  const checkoutOverlay = document.getElementById('checkout-overlay');
+  
+  const steps = {
+    delivery: document.getElementById('step-delivery'),
+    payment: document.getElementById('step-payment'),
+    confirm: document.getElementById('step-confirm')
+  };
+  
+  const addressInputGroup = document.getElementById('address-input-group');
+  const checkoutAddressInput = document.getElementById('checkout-address');
+  
+  document.querySelectorAll('input[name="delivery-type"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.value === 'entrega') {
+        addressInputGroup.classList.remove('hidden');
+      } else {
+        addressInputGroup.classList.add('hidden');
+      }
+    });
+  });
+
+  function abrirCheckout() {
     if (!API.estaLogado()) {
       fecharCarrinho();
       abrirModalAuth(true);
       mostrarToast('Por favor, faça login antes de fechar o pedido.', 'info');
       return;
     }
+    
+    fecharCarrinho();
+    mostrarPassoCheckout('delivery');
+    checkoutModal.classList.add('active');
+  }
 
+  function fecharCheckout() {
+    checkoutModal.classList.remove('active');
+  }
+
+  function mostrarPassoCheckout(passo) {
+    Object.keys(steps).forEach(key => {
+      if (key === passo) {
+        steps[key].classList.remove('hidden');
+      } else {
+        steps[key].classList.add('hidden');
+      }
+    });
+  }
+
+  closeCheckoutModalBtn.addEventListener('click', fecharCheckout);
+  checkoutOverlay.addEventListener('click', fecharCheckout);
+
+  document.getElementById('btn-delivery-next').addEventListener('click', () => {
+    const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+    if (deliveryType === 'entrega' && !checkoutAddressInput.value.trim()) {
+      mostrarToast('Por favor, insira o endereço de entrega.', 'error');
+      return;
+    }
+    mostrarPassoCheckout('payment');
+  });
+
+  document.getElementById('btn-payment-back').addEventListener('click', () => {
+    mostrarPassoCheckout('delivery');
+  });
+
+  document.getElementById('btn-payment-next').addEventListener('click', () => {
+    renderizarConfirmacaoCheckout();
+    mostrarPassoCheckout('confirm');
+  });
+
+  document.getElementById('btn-confirm-back').addEventListener('click', () => {
+    mostrarPassoCheckout('payment');
+  });
+
+  function renderizarConfirmacaoCheckout() {
+    const confirmItemsList = document.getElementById('confirm-items-list');
+    const confirmDeliveryType = document.getElementById('confirm-delivery-type');
+    const confirmDeliveryAddress = document.getElementById('confirm-delivery-address');
+    const confirmAddressWrapper = document.getElementById('confirm-address-wrapper');
+    const confirmPaymentMethod = document.getElementById('confirm-payment-method');
+    const confirmTotalVal = document.getElementById('confirm-total-val');
+
+    confirmItemsList.innerHTML = carrinho.map(item => `
+      <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.85rem;">
+        <span>${item.quantidade}x ${item.nome}</span>
+        <span>R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}</span>
+      </div>
+    `).join('');
+
+    const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+    const itemsTotal = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+    
+    if (deliveryType === 'entrega') {
+      confirmDeliveryType.textContent = 'Entrega em Domicílio (Taxa: R$ 5,00)';
+      confirmDeliveryAddress.textContent = checkoutAddressInput.value;
+      confirmAddressWrapper.classList.remove('hidden');
+      confirmTotalVal.textContent = `R$ ${(itemsTotal + 5.00).toFixed(2).replace('.', ',')}`;
+    } else {
+      confirmDeliveryType.textContent = 'Retirada na Cafeteria (Sem taxa)';
+      confirmDeliveryAddress.textContent = '-';
+      confirmAddressWrapper.classList.add('hidden');
+      confirmTotalVal.textContent = `R$ ${itemsTotal.toFixed(2).replace('.', ',')}`;
+    }
+
+    const paymentType = document.querySelector('input[name="payment-type"]:checked').value;
+    const paymentNames = {
+      pix: 'Pix',
+      cartao: 'Cartão na Maquininha',
+      dinheiro: 'Dinheiro'
+    };
+    confirmPaymentMethod.textContent = paymentNames[paymentType];
+  }
+
+  document.getElementById('btn-submit-order').addEventListener('click', async () => {
     mostrarLoader(true);
+
     const itensFormatoApi = carrinho.map(item => ({
       produto: item.produtoId,
       quantidade: item.quantidade
     }));
 
+    const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+    const address = deliveryType === 'entrega' ? checkoutAddressInput.value : '';
+    const paymentType = document.querySelector('input[name="payment-type"]:checked').value;
+
     try {
-      const resp = await API.criarPedido(itensFormatoApi, orderNotes.value);
+      await API.criarPedido(itensFormatoApi, orderNotes.value, deliveryType, address, paymentType);
+      
       carrinho = [];
       salvarCarrinho();
       renderizarCarrinho();
+      
       orderNotes.value = '';
-      fecharCarrinho();
-      mostrarToast('Pedido compilado com sucesso!', 'success');
+      checkoutAddressInput.value = '';
+      
+      fecharCheckout();
+      mostrarToast('Pedido realizado com sucesso!', 'success');
       alternarTela('pedidos');
     } catch (error) {
       mostrarToast(error.message, 'error');
@@ -559,6 +698,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `).join('');
 
+      const entregaInfo = ped.tipoEntrega === 'entrega' 
+        ? `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;"><i class="fa-solid fa-motorcycle"></i> Entrega: ${ped.endereco}</div>`
+        : `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;"><i class="fa-solid fa-store"></i> Retirada na Cafeteria</div>`;
+
+      const pagamentoInfo = `<div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"><i class="fa-solid fa-wallet"></i> Pagamento: ${ped.metodoPagamento.toUpperCase()}</div>`;
+
       return `
         <div class="order-card">
           <div class="order-header">
@@ -571,6 +716,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="order-items-list">
             ${itensHtml}
           </div>
+          ${entregaInfo}
+          ${pagamentoInfo}
           ${ped.observacoes ? `<p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"><strong>Obs:</strong> ${ped.observacoes}</p>` : ''}
           <div class="order-total-section">
             <span>Total pago</span>
@@ -627,75 +774,129 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Admin - Aba Pedidos Clientes
+  // Admin - Aba Pedidos Clientes (Kanban)
   async function carregarPedidosGerenciamentoAdmin() {
     try {
       const response = await API.listarTodosPedidosAdmin();
       const pedidos = response.data;
 
-      if (pedidos.length === 0) {
-        adminOrdersList.innerHTML = `
-          <div class="empty-state">
-            <i class="fa-solid fa-box-open"></i>
-            <p>Nenhum pedido efetuado no sistema.</p>
-          </div>
-        `;
-        return;
-      }
+      // Selecionar os contêineres e contadores das colunas
+      const lists = {
+        pendente: document.getElementById('list-pendente'),
+        preparando: document.getElementById('list-preparando'),
+        pronto: document.getElementById('list-pronto'),
+        finalizado: document.getElementById('list-finalizado')
+      };
 
-      adminOrdersList.innerHTML = pedidos.map(ped => {
-        const dataFormatada = new Date(ped.createdAt).toLocaleString('pt-BR');
-        const clienteNome = ped.cliente ? ped.cliente.nome : 'Cliente Desconhecido';
-        
-        const itensHtml = ped.itens.map(it => `
-          <div class="order-item-desc">
-            <span>${it.quantidade}x ${it.produto ? it.produto.nome : 'Removido'}</span>
-          </div>
-        `).join('');
+      const counts = {
+        pendente: document.getElementById('count-pendente'),
+        preparando: document.getElementById('count-preparando'),
+        pronto: document.getElementById('count-pronto'),
+        finalizado: document.getElementById('count-finalizado')
+      };
 
-        return `
-          <div class="order-card" style="border-top: 4px solid var(--primary);">
-            <div class="order-header">
-              <div>
-                <span class="order-id">#ID-${ped._id.slice(-6).toUpperCase()}</span>
-                <div class="order-date">${dataFormatada}</div>
-                <div style="font-size:0.85rem; font-weight:600; margin-top:4px;"><i class="fa-solid fa-user"></i> ${clienteNome}</div>
+      // Limpar todos os contêineres primeiro
+      Object.keys(lists).forEach(status => {
+        if (lists[status]) lists[status].innerHTML = '';
+      });
+
+      // Separar os pedidos por status
+      const grupos = {
+        pendente: pedidos.filter(p => p.status === 'pendente'),
+        preparando: pedidos.filter(p => p.status === 'preparando'),
+        pronto: pedidos.filter(p => p.status === 'pronto'),
+        finalizado: pedidos.filter(p => p.status === 'entregue' || p.status === 'cancelado')
+      };
+
+      // Atualizar contadores
+      Object.keys(counts).forEach(status => {
+        if (counts[status]) counts[status].textContent = grupos[status].length;
+      });
+
+      // Renderizar cada coluna
+      Object.keys(lists).forEach(status => {
+        const container = lists[status];
+        if (!container) return;
+
+        const pedidosDoGrupo = grupos[status];
+
+        if (pedidosDoGrupo.length === 0) {
+          container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:20px;">Nenhum pedido</div>`;
+          return;
+        }
+
+        container.innerHTML = pedidosDoGrupo.map(ped => {
+          const dataFormatada = new Date(ped.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const clienteNome = ped.cliente ? ped.cliente.nome : 'Cliente Visitante';
+
+          const itensHtml = ped.itens.map(it => `
+            <div class="kanban-card-item">
+              <span>${it.quantidade}x ${it.produto ? it.produto.nome : 'Produto Removido'}</span>
+            </div>
+          `).join('');
+
+          // Gerar botões de ação dinâmicos baseados no status atual
+          let botoesAcao = '';
+          if (ped.status === 'pendente') {
+            botoesAcao = `
+              <button class="btn btn-primary action-kanban-btn" data-id="${ped._id}" data-status="preparando">Iniciar Preparo</button>
+              <button class="btn btn-danger action-kanban-btn" data-id="${ped._id}" data-status="cancelado" title="Cancelar Pedido"><i class="fa-solid fa-ban"></i></button>
+            `;
+          } else if (ped.status === 'preparando') {
+            botoesAcao = `
+              <button class="btn btn-success action-kanban-btn" data-id="${ped._id}" data-status="pronto">Pronto</button>
+            `;
+          } else if (ped.status === 'pronto') {
+            botoesAcao = `
+              <button class="btn btn-primary action-kanban-btn" data-id="${ped._id}" data-status="entregue">Entregar</button>
+            `;
+          } else {
+            // Finalizado (entregue / cancelado)
+            const isCancelado = ped.status === 'cancelado';
+            botoesAcao = `<span class="badge ${isCancelado ? 'badge-danger' : 'badge-success'}" style="text-align:center; width:100%; display:block;">${isCancelado ? 'Cancelado' : 'Entregue'}</span>`;
+          }
+
+          const entregaInfo = ped.tipoEntrega === 'entrega' 
+            ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;"><i class="fa-solid fa-motorcycle"></i> Entrega: ${ped.endereco}</div>`
+            : `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;"><i class="fa-solid fa-store"></i> Retirada na loja</div>`;
+
+          const pagamentoInfo = `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;"><i class="fa-solid fa-wallet"></i> Pagamento: ${ped.metodoPagamento.toUpperCase()}</div>`;
+
+          return `
+            <div class="kanban-card">
+              <div class="kanban-card-header">
+                <span class="kanban-card-id">#${ped._id.slice(-6).toUpperCase()}</span>
+                <span class="kanban-card-time"><i class="fa-regular fa-clock"></i> ${dataFormatada}</span>
+              </div>
+              <div class="kanban-card-client"><i class="fa-solid fa-user"></i> ${clienteNome}</div>
+              <div class="kanban-card-items">
+                ${itensHtml}
+              </div>
+              ${entregaInfo}
+              ${pagamentoInfo}
+              ${ped.observacoes ? `<div class="kanban-card-notes"><strong>Obs:</strong> ${ped.observacoes}</div>` : ''}
+              <div class="kanban-card-total">
+                <span>Total</span>
+                <span>R$ ${ped.total.toFixed(2).replace('.', ',')}</span>
+              </div>
+              <div class="kanban-card-actions">
+                ${botoesAcao}
               </div>
             </div>
-            <div class="order-items-list" style="max-height: 100px; overflow-y:auto;">
-              ${itensHtml}
-            </div>
-            ${ped.observacoes ? `<p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"><strong>Obs:</strong> ${ped.observacoes}</p>` : ''}
-            <div class="order-total-section">
-              <span>Total:</span>
-              <span>R$ ${ped.total.toFixed(2).replace('.', ',')}</span>
-            </div>
-            
-            <div class="admin-order-actions">
-              <select class="status-select" data-id="${ped._id}">
-                <option value="pendente" ${ped.status === 'pendente' ? 'selected' : ''}>Pendente</option>
-                <option value="preparando" ${ped.status === 'preparando' ? 'selected' : ''}>Preparando</option>
-                <option value="pronto" ${ped.status === 'pronto' ? 'selected' : ''}>Pronto</option>
-                <option value="entregue" ${ped.status === 'entregue' ? 'selected' : ''}>Entregue</option>
-                <option value="cancelado" ${ped.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
-              </select>
-              <button class="btn btn-primary update-status-btn" data-id="${ped._id}" style="padding:6px 12px; font-size:0.85rem;">Alterar</button>
-            </div>
-          </div>
-        `;
-      }).join('');
+          `;
+        }).join('');
+      });
 
-      // Ouvintes de alteração de status
-      document.querySelectorAll('.update-status-btn').forEach(btn => {
+      // Adicionar escuta de eventos aos botões de ação do Kanban
+      document.querySelectorAll('.action-kanban-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const pedId = btn.dataset.id;
-          const select = document.querySelector(`.status-select[data-id="${pedId}"]`);
-          const novoStatus = select.value;
+          const novoStatus = btn.dataset.status;
 
           mostrarLoader(true);
           try {
-            await API.updateStatusPedidoAdmin(pedId, novoStatus);
-            mostrarToast('Status do pedido atualizado!', 'success');
+            await API.atualizarStatusPedidoAdmin(pedId, novoStatus);
+            mostrarToast('Pedido atualizado com sucesso!', 'success');
             carregarPedidosGerenciamentoAdmin();
           } catch (error) {
             mostrarToast(error.message, 'error');
@@ -706,11 +907,128 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
     } catch (error) {
+      console.error('Erro ao renderizar Kanban de pedidos:', error);
       mostrarToast('Erro ao carregar gerenciamento de pedidos', 'error');
     }
   }
 
-  // Admin - Cadastro/Edição de Produto
+  // Admin - Aba Métricas (Relatórios)
+  async function carregarMetricasAdmin() {
+    mostrarLoader(true);
+    try {
+      const response = await API.listarTodosPedidosAdmin();
+      const pedidos = response.data;
+
+      // 1. Faturamento Total (Apenas pedidos entregues)
+      const pedidosEntregues = pedidos.filter(p => p.status === 'entregue');
+      const faturamentoTotal = pedidosEntregues.reduce((acc, p) => acc + p.total, 0);
+
+      // 2. Total de Pedidos (todos os pedidos)
+      const totalPedidos = pedidos.length;
+
+      // 3. Ticket Médio (Faturamento / Pedidos Entregues)
+      const ticketMedio = faturamentoTotal / (pedidosEntregues.length || 1);
+
+      // Injetar valores nos cards
+      document.getElementById('metric-revenue').textContent = `R$ ${faturamentoTotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById('metric-orders-count').textContent = totalPedidos;
+      document.getElementById('metric-ticket-average').textContent = `R$ ${ticketMedio.toFixed(2).replace('.', ',')}`;
+
+      // 4. Pedidos por Status
+      const contagemStatus = {
+        pendente: pedidos.filter(p => p.status === 'pendente').length,
+        preparando: pedidos.filter(p => p.status === 'preparando').length,
+        pronto: pedidos.filter(p => p.status === 'pronto').length,
+        entregue: pedidos.filter(p => p.status === 'entregue').length,
+        cancelado: pedidos.filter(p => p.status === 'cancelado').length
+      };
+
+      const statusNomes = {
+        pendente: 'Pendentes',
+        preparando: 'Em Preparo',
+        pronto: 'Prontos',
+        entregue: 'Entregues',
+        cancelado: 'Cancelados'
+      };
+
+      const statusSummaryList = document.getElementById('status-summary-list');
+      statusSummaryList.innerHTML = Object.keys(contagemStatus).map(status => `
+        <div class="status-summary-item">
+          <div class="status-summary-label">
+            <span class="status-indicator ${status}"></span>
+            <span>${statusNomes[status]}</span>
+          </div>
+          <span class="status-summary-val">${contagemStatus[status]}</span>
+        </div>
+      `).join('');
+
+      // 5. Vendas por Categoria (Quantidade de itens comprados)
+      const categoriaVendas = {
+        cafe: 0,
+        bebida: 0,
+        acompanhamento: 0,
+        sobremesa: 0
+      };
+
+      // Computar quantidades de produtos vendidos em pedidos não cancelados
+      pedidos.filter(p => p.status !== 'cancelado').forEach(ped => {
+        ped.itens.forEach(it => {
+          if (it.produto && it.produto.categoria) {
+            const cat = it.produto.categoria;
+            if (categoriaVendas[cat] !== undefined) {
+              categoriaVendas[cat] += it.quantidade;
+            }
+          }
+        });
+      });
+
+      const categoriaNomes = {
+        cafe: 'Cafés',
+        bebida: 'Bebidas Geladas',
+        acompanhamento: 'Acompanhamentos',
+        sobremesa: 'Sobremesas'
+      };
+
+      // Achar o valor máximo para escala do gráfico (porcentagem de largura da barra)
+      const maxVendas = Math.max(...Object.values(categoriaVendas), 1);
+
+      const categorySalesChart = document.getElementById('category-sales-chart');
+      categorySalesChart.innerHTML = Object.keys(categoriaVendas).map(cat => {
+        const quantidade = categoriaVendas[cat];
+
+        return `
+          <div class="chart-bar-container">
+            <div class="chart-bar-label">
+              <span>${categoriaNomes[cat]}</span>
+              <strong>${quantidade} unid.</strong>
+            </div>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Animar o preenchimento das barras após um pequeno delay para efeito visual
+      setTimeout(() => {
+        const fills = categorySalesChart.querySelectorAll('.chart-bar-fill');
+        Object.keys(categoriaVendas).forEach((cat, index) => {
+          const quantidade = categoriaVendas[cat];
+          const porcentagem = (quantidade / maxVendas) * 100;
+          if (fills[index]) {
+            fills[index].style.width = `${porcentagem}%`;
+          }
+        });
+      }, 100);
+
+    } catch (error) {
+      console.error('Erro ao processar métricas:', error);
+      mostrarToast('Erro ao carregar relatórios e métricas', 'error');
+    } finally {
+      mostrarLoader(false);
+    }
+  }
+
   adminAddProductBtn.addEventListener('click', () => abrirFormularioProduto());
 
   async function abrirFormularioProduto(produtoId = null) {
@@ -800,6 +1118,47 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarLoader(false);
       }
     }
+  }
+
+  // --- CADASTRO DE NOVO ADMINISTRADOR ---
+  function abrirModalAdminUser() {
+    adminUserForm.reset();
+    adminUserModal.classList.add('active');
+  }
+
+  function fecharModalAdminUser() {
+    adminUserModal.classList.remove('active');
+    adminUserForm.reset();
+  }
+
+  if (adminCreateAdminBtn) {
+    adminCreateAdminBtn.addEventListener('click', abrirModalAdminUser);
+  }
+  if (closeAdminUserBtn) {
+    closeAdminUserBtn.addEventListener('click', fecharModalAdminUser);
+  }
+  if (adminUserOverlay) {
+    adminUserOverlay.addEventListener('click', fecharModalAdminUser);
+  }
+
+  if (adminUserForm) {
+    adminUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('admin-user-name').value;
+      const email = document.getElementById('admin-user-email').value;
+      const senha = document.getElementById('admin-user-senha').value;
+
+      mostrarLoader(true);
+      try {
+        await API.registrarAdmin(nome, email, senha);
+        mostrarToast('Novo administrador cadastrado com sucesso!', 'success');
+        fecharModalAdminUser();
+      } catch (error) {
+        mostrarToast(error.message, 'error');
+      } finally {
+        mostrarLoader(false);
+      }
+    });
   }
 
 });
