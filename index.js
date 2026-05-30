@@ -42,10 +42,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/produtos', produtoRoutes);
 app.use('/api/pedidos', pedidoRoutes);
 
-// Exemplo de direcionamento para SPA
-app.get('*', (req, res, next) => {
-  // Se a rota começar com /api, não direciona para o frontend, deixa bater nas rotas da API ou 404
-  if (req.path.startsWith('/api')) {
+// Exemplo de direcionamento para SPA (Fallback)
+app.use((req, res, next) => {
+  // Apenas redireciona requisições GET que não sejam da API
+  if (req.method !== 'GET' || req.path.startsWith('/api')) {
     return next();
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
