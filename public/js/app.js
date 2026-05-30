@@ -154,9 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- CONTROLE DE SESSÃO / UI DE USUÁRIO ---
   function atualizarInterfaceUsuario() {
     usuarioLogado = API.obterUsuario();
+    
+    // Sincronizar carrinho específico do usuário logado (ou visitante)
+    carrinho = obterCarrinhoSalvo();
+    renderizarCarrinho();
     
     if (usuarioLogado) {
       // Alterar botão de Entrar para Sair
@@ -348,13 +351,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // --- MECÂNICA DO CARRINHO ---
+  function obterChaveCarrinho() {
+    const usuario = API.obterUsuario();
+    return usuario ? `codecoffee_carrinho_${usuario._id}` : 'codecoffee_carrinho_visitante';
+  }
+
   function obterCarrinhoSalvo() {
-    const localData = localStorage.getItem('codecoffee_carrinho');
+    const chave = obterChaveCarrinho();
+    const localData = localStorage.getItem(chave);
     return localData ? JSON.parse(localData) : [];
   }
 
   function salvarCarrinho() {
-    localStorage.setItem('codecoffee_carrinho', JSON.stringify(carrinho));
+    const chave = obterChaveCarrinho();
+    localStorage.setItem(chave, JSON.stringify(carrinho));
   }
 
   function abrirCarrinho() {
