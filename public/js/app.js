@@ -255,12 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const nome = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
     const senha = document.getElementById('register-senha').value;
-    const isAdmin = document.getElementById('register-admin').checked;
-    const role = isAdmin ? 'admin' : 'cliente';
 
     mostrarLoader(true);
     try {
-      await API.registrar(nome, email, senha, role);
+      await API.registrar(nome, email, senha);
       fecharModalAuth();
       atualizarInterfaceUsuario();
       mostrarToast('Sua conta foi compilada com sucesso!', 'success');
