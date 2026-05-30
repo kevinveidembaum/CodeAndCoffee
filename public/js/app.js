@@ -66,6 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeProductModalBtn = document.getElementById('close-product-modal-btn');
   const productOverlay = document.getElementById('product-overlay');
 
+  // Painel Admin - Modal de Criação de Admin
+  const adminCreateAdminBtn = document.getElementById('admin-create-admin-btn');
+  const adminUserModal = document.getElementById('admin-user-modal');
+  const adminUserForm = document.getElementById('admin-user-form');
+  const closeAdminUserBtn = document.getElementById('close-admin-user-btn');
+  const adminUserOverlay = document.getElementById('admin-user-overlay');
+
   // --- INICIALIZAÇÃO ---
   mostrarLoader(false);
   atualizarInterfaceUsuario();
@@ -976,6 +983,47 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarLoader(false);
       }
     }
+  }
+
+  // --- CADASTRO DE NOVO ADMINISTRADOR ---
+  function abrirModalAdminUser() {
+    adminUserForm.reset();
+    adminUserModal.classList.add('active');
+  }
+
+  function fecharModalAdminUser() {
+    adminUserModal.classList.remove('active');
+    adminUserForm.reset();
+  }
+
+  if (adminCreateAdminBtn) {
+    adminCreateAdminBtn.addEventListener('click', abrirModalAdminUser);
+  }
+  if (closeAdminUserBtn) {
+    closeAdminUserBtn.addEventListener('click', fecharModalAdminUser);
+  }
+  if (adminUserOverlay) {
+    adminUserOverlay.addEventListener('click', fecharModalAdminUser);
+  }
+
+  if (adminUserForm) {
+    adminUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('admin-user-name').value;
+      const email = document.getElementById('admin-user-email').value;
+      const senha = document.getElementById('admin-user-senha').value;
+
+      mostrarLoader(true);
+      try {
+        await API.registrarAdmin(nome, email, senha);
+        mostrarToast('Novo administrador cadastrado com sucesso!', 'success');
+        fecharModalAdminUser();
+      } catch (error) {
+        mostrarToast(error.message, 'error');
+      } finally {
+        mostrarLoader(false);
+      }
+    });
   }
 
 });
