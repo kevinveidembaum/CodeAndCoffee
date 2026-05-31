@@ -99,4 +99,4 @@ Certifique-se de ter instalado em sua máquina:
 
 ## Deploy
 
-Link para a aplicação publicada: *[https://code-and-coffee-qv87e8fpa-kevin-nikolai-s-projects.vercel.app/]*
+Link para a aplicação publicada: *[code-and-coffee-ten.vercel.app]*
