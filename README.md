@@ -3,9 +3,10 @@
 Este é o projeto integrador de um cardápio digital dinâmico e responsivo para a cafeteria **Code&Coffee**. A aplicação é full-stack, desenvolvida com backend em Node.js/Express, persistência no banco de dados MongoDB (usando Mongoose) e uma interface frontend elegante construída em HTML5 semântico, Vanilla CSS e Vanilla JavaScript.
 
 ## Integrantes
-
-- **Nikolai** (Desenvolvedor Full-Stack)
-- *Adicione outros integrantes do grupo aqui*
+- **Kevin Nikolai Oliveira Veidembaum** (Desenvolvedor Full-Stack)
+- **João Pedro Cyrineu** (Desenvolvedor Front-End)
+- **Thales de Barros Müzel** (Desenvolvedor Back-end)
+- **Weslley Caetano Soares** (Líder Técnico)
 
 ## Tecnologias
 
